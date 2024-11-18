@@ -1,0 +1,208 @@
+
+
+https://docs.redhat.com/en/documentation/red_hat_enterprise_linux/9/html/configuring_and_managing_virtualization/managing-storage-for-virtual-machines_configuring-and-managing-virtualization#creating-directory-based-storage-pools-using-the-cli_assembly_managing-virtual-machine-storage-pools-using-the-cli
+
+https://docs.redhat.com/en/documentation/red_hat_enterprise_linux/9/html/configuring_and_managing_virtualization/managing-storage-for-virtual-machines_configuring-and-managing-virtualization#creating-and-assigning-storage-volumes-using-the-cli_assembly_managing-virtual-machine-storage-volumes-using-the-cli
+
+
+
+https://mirror.openshift.com/pub/openshift-v4/
+
+
+----------------
+
+
+Folder Setup
+--------------
+mkdir -p ocp_sno_setup
+
+mkdir ocp_sno_setup/cli-tools
+
+mkdir ocp_sno_setup/installer-files
+
+mkdir ocp_sno_setup/sshkey
+
+mkdir ocp_sno_setup/kvm
+
+mkdir ocp_sno_setup/secrets
+
+SSH Keygen
+------------
+ssh-keygen -t ed25519 -f ./ocp_sno_setup/sshkey/zagaocp-sno2 -N ""
+
+
+# https://console.redhat.com/openshift/token/show
+
+OFFLINE_ACCESS_TOKEN=eyJhbGciOiJIUzUxMiIsInR5cCIgOiAiSldUIiwia2lkIiA6ICI0NzQzYTkzMC03YmJiLTRkZGQtOTgzMS00ODcxNGRlZDc0YjUifQ.eyJpYXQiOjE3MzE2NjcwNzcsImp0aSI6IjVjNjA1MzkyLWVkNjEtNDBiYS1hZTc3LWRjOTZlMTg1ODFkYSIsImlzcyI6Imh0dHBzOi8vc3NvLnJlZGhhdC5jb20vYXV0aC9yZWFsbXMvcmVkaGF0LWV4dGVybmFsIiwiYXVkIjoiaHR0cHM6Ly9zc28ucmVkaGF0LmNvbS9hdXRoL3JlYWxtcy9yZWRoYXQtZXh0ZXJuYWwiLCJzdWIiOiJmOjUyOGQ3NmZmLWY3MDgtNDNlZC04Y2Q1LWZlMTZmNGZlMGNlNjp3aXJlX2dob3N0MTMiLCJ0eXAiOiJPZmZsaW5lIiwiYXpwIjoiY2xvdWQtc2VydmljZXMiLCJub25jZSI6ImIyMDMwMGJmLWExOTMtNDVhYy1iZWMxLTI4MDJlYjYxNzY4YiIsInNpZCI6IjgwOGI3YWFjLTBlOTEtNDdlNS04OTA3LTdmMWYzMGM2ZDkyYyIsInNjb3BlIjoib3BlbmlkIGJhc2ljIGFwaS5pYW0uc2VydmljZV9hY2NvdW50cyByb2xlcyB3ZWItb3JpZ2lucyBjbGllbnRfdHlwZS5wcmVfa2MyNSBvZmZsaW5lX2FjY2VzcyJ9.at_bc5ADeU_5HjBXwVCUABHYJHF3fYMxJI7a2iJ-kHCStOMIAWxG5MA9blIOyf_ScjLNZ0kQTEyvEhcgn9nphw
+
+export BEARER=$(curl --silent --data-urlencode "grant_type=refresh_token" --data-urlencode "client_id=cloud-services" --data-urlencode "refresh_token=${OFFLINE_ACCESS_TOKEN}" https://sso.redhat.com/auth/realms/redhat-external/protocol/openid-connect/token | jq -r .access_token)
+
+curl -X POST https://api.openshift.com/api/accounts_mgmt/v1/access_token --header "Content-Type:application/json" --header "Authorization: Bearer $BEARER" | jq > pull-secret.txt
+
+
+
+OCP pull secret
+----------------
+cat <<EOF > ./ocp_sno_setup/secrets/pull-secret.txt
+{"auths":{"cloud.openshift.com":{"auth":"b3BlbnNoaWZ0LXJlbGVhc2UtZGV2K29jbV9hY2Nlc3NfOWI3NDhhNmYwNGQxNDE2YmI3MWQxNTRkM2EyMzQyMTc6UTdCRExMRTlGRzJUTVhHMzIxVU8yU0NGRjQ4ODVOVzNYMDVKWFJJNzAySUcxWFhCUU9VWDY3UkdNNlpMTkxRTw==","email":"marimuthuceo@gmail.com"},"quay.io":{"auth":"b3BlbnNoaWZ0LXJlbGVhc2UtZGV2K29jbV9hY2Nlc3NfOWI3NDhhNmYwNGQxNDE2YmI3MWQxNTRkM2EyMzQyMTc6UTdCRExMRTlGRzJUTVhHMzIxVU8yU0NGRjQ4ODVOVzNYMDVKWFJJNzAySUcxWFhCUU9VWDY3UkdNNlpMTkxRTw==","email":"marimuthuceo@gmail.com"},"registry.connect.redhat.com":{"auth":"fHVoYy1wb29sLWVkZTA5ZjVjLTJmYTctNDFmMS04ZDRiLTg2MmVmMTY3ZjFlNjpleUpoYkdjaU9pSlNVelV4TWlKOS5leUp6ZFdJaU9pSmlPV0pqTlRjMU5UVXhOemcwTlRjNVltRmlNalpqWXpnd09XRTVPRE5pWXlKOS5CNWRsNGEzbFJzUlU4UDh5cjJkUFpuc05uM1NwQjRNM3BCZ0ZrdzItaHJvbW1MYkwtYzVuMlpRdmZsa05iNVhrQ2hjdlh0Z0h0MVhRUXpGQmFiOWROd252Rk9oR1NFZ1kyVjZzeHVvTkNKTUYwQXJjZTZuaVAzN3JXb09YXzJCRTIyUmQzUVJ6MjRTREo4bEhMLURMNlZZOWVQRVVMdVhIUFB5b0xRZEJyWHNwMF90UmJkQ1hNSWYzcDNVTTlWcFoxOUlVdk9TbmJjWmRIa2VMVG5aWjZHOGM5MHdsWkV6WDdZa1NFbUpRY09FR2I4YVA4MVVPejg0WHloc2tZSXFyWlRyLVhSSGQ5dUpUNFZlclc3QVhCTWRHMlFkcnBwS1c2MlM3cjR5NjJyWndvLXROUWRRWDNGRzg0RXhmUjRrYUp0LU42QmdoZ3NWUlBVdEtVb1NrdUhmQWw5QzlZQWsyZXJGaHU2RkhEZmhjN25zQzNRSy1ucHZJREJjbGRoR2paS2YyVGoxSTBIQTBmTzlvUlVZdEhXZ0c3MWEwb191WFc4UnRUTHBBWWpkc0lBTk1VMWtTbVRqZVM1ZW14Ylo1dWY0b2RzTXhhV1NtUExtbDdJRzdnR0ZKWGllQW5URzN1OXVwRjVDaFZVT0VxcnhjeGhyQzQtMFFZQ2NjazRYVkxqNlVhOXZ6VGxvMHJGWnI3UVYzdUJYd2dTSjdaMmpTeXBkZ3BkNmVuZ25KWFQ5RV9yMm5RWndxVVN0RTV5c2pVNk9EZEh4QUdCb3JsRHpzRXlzblltZ1RzaDZ0YjZmOHd5RllpMUpFcjVsenpOWWdBTkFoTXFtaVR6T190UlRZeEh1RXFqck1jM0xPNzFvWlhkb29tOVVBaElFWl8wdXZIRGdtYVZhT1ZFTQ==","email":"marimuthuceo@gmail.com"},"registry.redhat.io":{"auth":"fHVoYy1wb29sLWVkZTA5ZjVjLTJmYTctNDFmMS04ZDRiLTg2MmVmMTY3ZjFlNjpleUpoYkdjaU9pSlNVelV4TWlKOS5leUp6ZFdJaU9pSmlPV0pqTlRjMU5UVXhOemcwTlRjNVltRmlNalpqWXpnd09XRTVPRE5pWXlKOS5CNWRsNGEzbFJzUlU4UDh5cjJkUFpuc05uM1NwQjRNM3BCZ0ZrdzItaHJvbW1MYkwtYzVuMlpRdmZsa05iNVhrQ2hjdlh0Z0h0MVhRUXpGQmFiOWROd252Rk9oR1NFZ1kyVjZzeHVvTkNKTUYwQXJjZTZuaVAzN3JXb09YXzJCRTIyUmQzUVJ6MjRTREo4bEhMLURMNlZZOWVQRVVMdVhIUFB5b0xRZEJyWHNwMF90UmJkQ1hNSWYzcDNVTTlWcFoxOUlVdk9TbmJjWmRIa2VMVG5aWjZHOGM5MHdsWkV6WDdZa1NFbUpRY09FR2I4YVA4MVVPejg0WHloc2tZSXFyWlRyLVhSSGQ5dUpUNFZlclc3QVhCTWRHMlFkcnBwS1c2MlM3cjR5NjJyWndvLXROUWRRWDNGRzg0RXhmUjRrYUp0LU42QmdoZ3NWUlBVdEtVb1NrdUhmQWw5QzlZQWsyZXJGaHU2RkhEZmhjN25zQzNRSy1ucHZJREJjbGRoR2paS2YyVGoxSTBIQTBmTzlvUlVZdEhXZ0c3MWEwb191WFc4UnRUTHBBWWpkc0lBTk1VMWtTbVRqZVM1ZW14Ylo1dWY0b2RzTXhhV1NtUExtbDdJRzdnR0ZKWGllQW5URzN1OXVwRjVDaFZVT0VxcnhjeGhyQzQtMFFZQ2NjazRYVkxqNlVhOXZ6VGxvMHJGWnI3UVYzdUJYd2dTSjdaMmpTeXBkZ3BkNmVuZ25KWFQ5RV9yMm5RWndxVVN0RTV5c2pVNk9EZEh4QUdCb3JsRHpzRXlzblltZ1RzaDZ0YjZmOHd5RllpMUpFcjVsenpOWWdBTkFoTXFtaVR6T190UlRZeEh1RXFqck1jM0xPNzFvWlhkb29tOVVBaElFWl8wdXZIRGdtYVZhT1ZFTQ==","email":"marimuthuceo@gmail.com"}}}
+EOF
+
+
+Storage
+--------
+virsh pool-capabilities | grep "'dir' supported='yes'"
+
+virsh pool-define-as zagaocp-sno2 dir --target "/mnt/zagaocp-sno2"
+
+virsh pool-build zagaocp-sno2
+
+virsh pool-list --all
+
+virsh pool-start zagaocp-sno2
+
+virsh pool-autostart zagaocp-sno2
+
+virsh pool-info zagaocp-sno2
+
+virsh pool-list --details
+
+virsh vol-create-as --pool zagaocp-sno2 --name main --capacity 370 --format qcow2 
+
+
+Network
+--------
+
+nmcli connection add type bridge con-name bridge0 ifname bridge0
+
+nmcli con add type bridge-slave ifname eno1 master bridge0
+
+nmcli dev
+
+nmcli con mod eno1 master bridge0
+
+nmcli con mod bridge0 ipv4.dns '208.67.222.222,208.67.220.220'
+
+nmcli con mod bridge0 ipv4.method manual
+
+nmcli con mod bridge0  ipv4.addresses 192.168.1.104/24
+
+nmcli connection modify bridge0 ipv6.method "disabled"
+
+nmcli con mod bridge0 bridge.priority '16384'
+
+nmcli con mod bridge0 connection.autoconnect 1
+
+nmcli con mod bridge0 connection.autoconnect-slaves 1
+
+nmcli con up bridge0
+
+cat <<EOF > ./kvm/bridge0.xml
+<network ipv6='no'>
+    <name>br0</name>
+    <forward mode="bridge"/>
+    <bridge name="bridge0"/>
+</network>
+EOF
+
+virsh net-define bridge0.xml
+
+virsh net-start br0
+
+virsh net-autostart br0
+
+nmcli con show bridge0
+
+
+
+
+
+OCP rhcos
+----------
+
+OCP_VERSION=stable-4.15
+
+ARCH=x86_64
+
+OPENSHIFT_TOOLS_URL=https://mirror.openshift.com/pub/openshift-v4/
+
+ISO_URL=$(./openshift-install coreos print-stream-json | grep location | grep $ARCH | grep iso | cut -d\" -f4)
+
+
+cd ocp_sno_setup
+
+
+curl -k $OPENSHIFT_TOOLS_URL/clients/ocp/latest/openshift-client-linux.tar.gz > oc.tar.gz
+
+tar zxf oc.tar.gz
+mv oc ./cli-tools
+chmod +x oc
+
+curl -k $OPENSHIFT_TOOLS_URL/clients/ocp/$OCP_VERSION/openshift-install-linux.tar.gz > openshift-install-linux.tar.gz
+
+tar zxvf openshift-install-linux.tar.gz
+mv openshift-install ./cli-tools
+chmod +x openshift-install
+
+curl -L $ISO_URL -o rhcos-live.iso
+
+
+cat <<EOF > ./installer-files/installer-config.yaml
+apiVersion: v1
+baseDomain: zagaopensource.com
+compute:
+- name: worker
+  replicas: 0 
+controlPlane:
+  name: master
+  replicas: 1 
+metadata:
+  name: zagasno2
+networking: 
+  clusterNetwork:
+  - cidr: 10.128.0.0/14
+    hostPrefix: 23
+  machineNetwork:
+  - cidr: 10.0.0.0/16 
+  networkType: OVNKubernetes
+  serviceNetwork:
+  - 172.30.0.0/16
+platform:
+  none: {}
+bootstrapInPlace:
+  installationDisk: /dev/vda
+pullSecret: 'OCP_PULL_SECRET'
+sshKey: |
+  SSH_PUB_KEY
+EOF
+
+
+virsh dumpxml zagaocp-sno2 | grep -A 10 '<disk>'
+
+cp install-config.yaml installer-files
+
+
+sed -i "s/OCP_PULL_SECRET/$(< pull-secret.txt)/g" install-config.yaml
+sed -i "s/SSH_PUB_KEY/$(< zagaocp-sno2.pub)/g" install-config.yaml
+
+Virtual Machines
+----------------
+
+virt-install --name="zagaocp-sno2" \
+ --vcpus=4 \
+ --ram=12288 \
+ --disk path=/var/lib/libvirt/images/master-snp.qcow2,bus=sata,size=120 \
+ --network network=sno,model=virtio \
+ --boot menu=on \
+ --graphics vnc --console pty,target_type=serial --noautoconsole \
+ --cpu host-passthrough
+ 
+
+virsh attach-disk zagaocp-sno2 /var/lib/libvirt/images/rhcos-sno-4.15.iso hdc --type cdrom --mode readonly --driver qemu --subdriver raw
+
+
+virsh start zagaocp-sno2
+
+virsh dumpxml test-fedora | sed -n '/<disk/,/<\/disk>/p' | grep -oP "<target dev='[^']+' bus='[^']+'/>" | sed "s/.*dev='\([^']*\)'.*/\1/"
+
+
+
